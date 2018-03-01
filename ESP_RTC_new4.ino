@@ -191,15 +191,14 @@ unsigned long sendNTPpacket(IPAddress& address) { //Пакет NTP
 }
 
  void setup_wifi() { //функция подключения к WiFi
-  WiFi.disconnect();
-  WiFi.mode(WIFI_STA);
   Serial.print("Connecting to ");
   Serial.println(ssid);
   WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    digitalWrite(BUILTIN_LED, ! digitalRead(BUILTIN_LED)); // Toggle builtin LED;
+  int i = 0;
+  while (WiFi.status() != WL_CONNECTED && i < 15) {
+    digitalWrite(BUILTIN_LED, ! digitalRead(BUILTIN_LED)); // Toggle builtin LED;    
     delay(1000);
+    i++;
     Serial.print(".");
   }
   digitalWrite(BUILTIN_LED, HIGH); // Turn off builtin LED
@@ -308,21 +307,15 @@ void pulseBitmap(uint8_t* bmp,int times, uint16_t colour){ //функция вы
 uint16_t drawRGB24toRGB565(uint8_t r, uint8_t g, uint8_t b){ //Плюшка для цветового эффекта
   return ((r / 8) << 11) | ((g / 4) << 5) | (b / 8);
 }
-void loop() {  //ОСНОВНОЙ ЦИКЛ !!!
-  
-if (WiFi.status() != WL_CONNECTED) { //Проверяем подключение к WiFi
-    setup_wifi();
-  }  
-  
+void loop() {  //ОСНОВНОЙ ЦИКЛ !!!  
 if (RTC_OK == 0) { // Если флаг обновления времени == 0, то запускаем синхронизацию с NTP сервером.
 ntp_update();  
 }
-
 RTC_Minute =  rtc.getMinute();
 RTC_Second =  rtc.getSecond();
 
 if (Hour_old != rtc.getHour()){ //если обновился час, сверяем время с NTP сервером
-  Serial.println(Hour_old + "  не равен " + rtc.getHour());
+  Serial.println("Обновился час");
   RTC_OK = 0;  //Раз в час обнуляем переменную, что бы сверить время с Ntp серверо
 }
 
@@ -332,11 +325,11 @@ if (!MQTTclient.connected()) { // проверяем подключение к M
 
 MQTTclient.loop();
 
-if  (RTC_Second == 10 || RTC_Second == 30  && tFlag == false){ // на 10 и 40 секунде выводим время на матрицу и посылаем в топик нужную инфу
-    char msg[10];  
-    DisplayTime(); //Выводим время на матрицу
-    sprintf(msg, "%d", (ESP.getFreeHeap())); //формируем стринг для отправки на брокер
-    MQTTclient.publish(mqtt_pub_inform, msg); //Посылаем информацию на брокер
+if  (RTC_Second == 10 || RTC_Second == 30 && (WiFi.status() == WL_CONNECTED) && tFlag == false){ // на 10 и 40 секунде выводим время на матрицу
+    char msg[10];
+    DisplayTime();
+    sprintf(msg, "%d", (ESP.getFreeHeap()));
+    MQTTclient.publish(mqtt_pub_inform, msg);
     tFlag = true;  
     timeout2 = millis() + 1000;
     
@@ -356,5 +349,16 @@ if  (RTC_Second == 20 || RTC_Second == 40 && tFlag == false){ // на 20 и 40 �
       if (millis() > timeout2 ) tFlag = false;
        }      
 
+if  (RTC_Second == 50 && tFlag == false){ // на 50 секунде проверяем подключение к WiFi
+    if (WiFi.status() != WL_CONNECTED) { //Проверяем подключение к WiFi
+    setup_wifi();
+  }    
+    tFlag = true;  
+    timeout2 = millis() + 1000;
+    
+ } else {
+      if (millis() > timeout2 ) tFlag = false;
+       }
 }
+
 

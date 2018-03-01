@@ -313,16 +313,6 @@ void loop() {  //ОСНОВНОЙ ЦИКЛ !!!
 if (WiFi.status() != WL_CONNECTED) { //Проверяем подключение к WiFi
     setup_wifi();
   }  
-
-  //раз в 10 сек. публикуем размер оставшийся в памяти в топик 
-  long now = millis();
-  long lastMsg = 0;  
-  if (now - lastMsg > 10000) {
-    char msg[10];
-    lastMsg = now;
-    sprintf(msg, "%d", (ESP.getFreeHeap()));
-    MQTTclient.publish(mqtt_pub_inform, msg);
-  }
   
 if (RTC_OK == 0) { // Если флаг обновления времени == 0, то запускаем синхронизацию с NTP сервером.
 ntp_update();  
@@ -342,8 +332,11 @@ if (!MQTTclient.connected()) { // проверяем подключение к M
 
 MQTTclient.loop();
 
-if  (RTC_Second == 10 || RTC_Second == 30  && tFlag == false){ // на 10 и 40 секунде выводим время на матрицу
-    DisplayTime();
+if  (RTC_Second == 10 || RTC_Second == 30  && tFlag == false){ // на 10 и 40 секунде выводим время на матрицу и посылаем в топик нужную инфу
+    char msg[10];  
+    DisplayTime(); //Выводим время на матрицу
+    sprintf(msg, "%d", (ESP.getFreeHeap())); //формируем стринг для отправки на брокер
+    MQTTclient.publish(mqtt_pub_inform, msg); //Посылаем информацию на брокер
     tFlag = true;  
     timeout2 = millis() + 1000;
     

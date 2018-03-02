@@ -190,9 +190,12 @@ unsigned long sendNTPpacket(IPAddress& address) { //Пакет NTP
   udp.endPacket();
 }
 
- void setup_wifi() { //функция подключения к WiFi
+void setup_wifi() { //функция подключения к WiFi
   Serial.print("Connecting to ");
   Serial.println(ssid);
+  WiFi.persistent(false);
+  WiFi.mode(WIFI_OFF);  
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   int i = 0;
   while (WiFi.status() != WL_CONNECTED && i < 15) {
